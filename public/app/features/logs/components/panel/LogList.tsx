@@ -31,7 +31,7 @@ import { GetRowContextQueryFn, LogLineMenuCustomItem } from './LogLineMenu';
 import { LogListContextProvider, LogListState, useLogListContext } from './LogListContext';
 import { LogListControls } from './LogListControls';
 import { LogListSearch } from './LogListSearch';
-import { LogListSearchContextProvider } from './LogListSearchContext';
+import { LogListSearchContextProvider, useLogListSearchContext } from './LogListSearchContext';
 import { preProcessLogs, LogListModel } from './processing';
 import { useKeyBindings } from './useKeyBindings';
 import { usePopoverMenu } from './usePopoverMenu';
@@ -266,6 +266,7 @@ const LogListComponent = ({
   } = usePopoverMenu(wrapperRef.current);
   const { t } = useTranslate();
   useKeyBindings();
+  const { filterLogs, matchingUids } = useLogListSearchContext();
 
   const debouncedResetAfterIndex = useMemo(() => {
     return debounce((index: number) => {
@@ -369,11 +370,11 @@ const LogListComponent = ({
     debouncedResetAfterIndex(0);
   }, [debouncedResetAfterIndex]);
 
-  const filteredLogs = useMemo(
-    () =>
-      filterLevels.length === 0 ? processedLogs : processedLogs.filter((log) => filterLevels.includes(log.logLevel)),
-    [filterLevels, processedLogs]
-  );
+  const filteredLogs = useMemo(() => {
+    const filteredLogs =
+      filterLevels.length === 0 ? processedLogs : processedLogs.filter((log) => filterLevels.includes(log.logLevel));
+    return matchingUids && filterLogs ? filteredLogs.filter((log) => matchingUids.includes(log.uid)) : filteredLogs;
+  }, [filterLevels, filterLogs, matchingUids, processedLogs]);
 
   return (
     <div className={styles.logListContainer}>
