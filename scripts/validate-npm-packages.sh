@@ -9,7 +9,8 @@ for file in "$ARTIFACTS_DIR"/*.tgz; do
   echo "🔍 Checking NPM package: $file"
 
   # Ignore named-exports for now as builds aren't compatible yet.
-  yarn dlx @arethetypeswrong/cli "$file" --ignore-rules "named-exports"
+  # Ignore false-cjs until we have a way to generate types for both esm and cjs.
+  yarn dlx @arethetypeswrong/cli "$file" --ignore-rules "named-exports" --ignore-rules "false-cjs"
 
   # get filename then strip everything after package name.
   dir_name=$(basename "$file" .tgz | sed -E 's/@([a-zA-Z0-9-]+)-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+)?/\1/')
@@ -43,13 +44,13 @@ for file in "$ARTIFACTS_DIR"/*.tgz; do
   fi
 
   # Assert commonjs builds
-  if [ ! -d dist ] || [ ! -f dist/cjs/index.cjs ] || [ ! -f dist/cjs/index.d.cts ]; then
+  if [ ! -d dist ] || [ ! -f dist/cjs/index.cjs ] || [ ! -f dist/types/index.d.ts ]; then
     echo -e "❌ Failed: Missing 'dist' directory or required commonjs files in package $dir_name.\n"
     exit 1
   fi
 
   if [ "$(jq -r '.main' package.json)" != "./dist/cjs/index.cjs" ] || \
-     [ "$(jq -r '.types' package.json)" != "./dist/cjs/index.d.cts" ]; then
+     [ "$(jq -r '.types' package.json)" != "./dist/types/index.d.ts" ]; then
     echo -e "❌ Failed: Incorrect cjs package.json properties in package $dir_name.\n"
     exit 1
   fi
