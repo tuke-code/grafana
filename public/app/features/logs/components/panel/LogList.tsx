@@ -31,6 +31,7 @@ import { GetRowContextQueryFn, LogLineMenuCustomItem } from './LogLineMenu';
 import { LogListContextProvider, LogListState, useLogListContext } from './LogListContext';
 import { LogListControls } from './LogListControls';
 import { preProcessLogs, LogListModel } from './processing';
+import { useKeyBindings } from './useKeyBindings';
 import { usePopoverMenu } from './usePopoverMenu';
 import {
   calculateFieldDimensions,
@@ -260,6 +261,7 @@ const LogListComponent = ({
     showDisablePopoverOptions,
   } = usePopoverMenu(wrapperRef.current);
   const { t } = useTranslate();
+  useKeyBindings();
 
   const debouncedResetAfterIndex = useMemo(() => {
     return debounce((index: number) => {
