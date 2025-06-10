@@ -1,8 +1,9 @@
 import { css } from '@emotion/css';
 import { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState, MouseEvent } from 'react';
+import Highlighter from 'react-highlight-words';
 import tinycolor from 'tinycolor2';
 
-import { GrafanaTheme2, LogsDedupStrategy } from '@grafana/data';
+import { findHighlightChunksInText, GrafanaTheme2, LogsDedupStrategy } from '@grafana/data';
 import { useTranslate } from '@grafana/i18n';
 import { Button, Icon, Tooltip } from '@grafana/ui';
 
@@ -257,7 +258,16 @@ const LogLineBody = ({ log, styles }: { log: LogListModel; styles: LogLineStyles
   }
 
   if (!syntaxHighlighting) {
-    return <span className="field no-highlighting">{log.body}</span>;
+    return highlight ? (
+      <Highlighter
+        textToHighlight={log.body}
+        searchWords={highlight.searchWords}
+        findChunks={findHighlightChunksInText}
+        highlightClassName={styles.matchHighLight}
+      />
+    ) : (
+      <span className="field no-highlighting">{log.body}</span>
+    );
   }
 
   return <span className="field log-syntax-highlight" dangerouslySetInnerHTML={{ __html: log.highlightedBody }} />;
@@ -334,6 +344,10 @@ export const getStyles = (theme: GrafanaTheme2) => {
         },
         '.log-token-method': {
           color: theme.colors.info.shade,
+        },
+        '.log-search-match': {
+          color: theme.components.textHighlight.text,
+          backgroundColor: theme.components.textHighlight.background,
         },
       },
       '& .no-highlighting': {
