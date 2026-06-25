@@ -229,7 +229,7 @@ func (s *webhookConnector) webhook(ctx context.Context, req *http.Request, repo 
 		return nil, fmt.Errorf("unexpected webhook request")
 	}
 
-	ctx = logging.Context(ctx, logging.FromContext(ctx).With("slug", repo.Slug(), "ref", repo.GetCurrentBranch()))
+	ctx = logging.Context(ctx, logging.FromContext(ctx).With("provider", repo.Config().Spec.Type, "slug", repo.Slug(), "ref", repo.GetCurrentBranch()))
 
 	// Authenticate the request before parsing anything.
 	verified, err := repo.VerifyRequest(req)
@@ -249,6 +249,16 @@ func (s *webhookConnector) webhook(ctx context.Context, req *http.Request, repo 
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = logging.Context(ctx, logging.FromContext(ctx).With(
+		"type", event.Type,
+		"action", event.Action,
+		"slug", event.RepoSlug,
+		"branch", event.Branch,
+		"pr", event.PRNumber,
+		"changes", event.TotalChanges,
+	))
+	logging.FromContext(ctx).Debug("webhook event received")
 
 	switch event.Type {
 	case repository.WebhookEventPush:

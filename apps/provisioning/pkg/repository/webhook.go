@@ -24,13 +24,13 @@ type VerifiedWebhookRequest struct {
 }
 
 // WebhookEventType classifies a normalized inbound webhook delivery.
-type WebhookEventType int
+type WebhookEventType string
 
 const (
-	WebhookEventUnsupported WebhookEventType = iota
-	WebhookEventPing
-	WebhookEventPush
-	WebhookEventPullRequest
+	WebhookEventUnsupported WebhookEventType = "unsupported"
+	WebhookEventPing        WebhookEventType = "ping"
+	WebhookEventPush        WebhookEventType = "push"
+	WebhookEventPullRequest WebhookEventType = "pull_request"
 )
 
 type PullRequestAction string
