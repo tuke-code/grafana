@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -27,9 +28,9 @@ import (
 )
 
 var (
-	_ dynamic.ResourceInterface = (*mockDynamicClient)(nil)
-	_ repository.Repository     = (*mockRepo)(nil)
-	_ repository.Hooks          = (*mockRepo)(nil)
+	_ dynamic.ResourceInterface    = (*mockDynamicClient)(nil)
+	_ repository.Repository        = (*mockRepo)(nil)
+	_ repository.WebhookRepository = (*mockRepo)(nil)
 )
 
 type mockDynamicClient struct {
@@ -88,24 +89,29 @@ func (m mockDynamicClient) ApplyStatus(ctx context.Context, name string, obj *un
 }
 
 type mockRepo struct {
-	name         string
-	namespace    string
-	onDeleteFunc func(ctx context.Context) error
+	name          string
+	namespace     string
+	webhookStatus *provisioning.WebhookStatus
+	webhookClient repository.WebhookClient
 }
 
-func (m mockRepo) OnCreate(ctx context.Context) ([]map[string]interface{}, error) {
-	panic("not needed for testing")
-}
-
-func (m mockRepo) OnUpdate(ctx context.Context) ([]map[string]interface{}, error) {
-	panic("not needed for testing")
-}
-
-func (m mockRepo) OnDelete(ctx context.Context) error {
-	if m.onDeleteFunc != nil {
-		return m.onDeleteFunc(ctx)
-	}
+func (m mockRepo) Slug() string             { return "" }
+func (m mockRepo) GetCurrentBranch() string { return "" }
+func (m mockRepo) WebhookURL() string       { return "" }
+func (m mockRepo) SubscribedEvents() []string {
 	return nil
+}
+
+func (m mockRepo) VerifyRequest(req *http.Request) (*repository.VerifiedWebhookRequest, error) {
+	panic("not needed for testing")
+}
+
+func (m mockRepo) ProcessRequest(ctx context.Context, req *repository.VerifiedWebhookRequest) (repository.WebhookEvent, error) {
+	panic("not needed for testing")
+}
+
+func (m mockRepo) WebhookClient() repository.WebhookClient {
+	return m.webhookClient
 }
 
 func (m mockRepo) Config() *provisioning.Repository {
@@ -114,6 +120,7 @@ func (m mockRepo) Config() *provisioning.Repository {
 			Name:      m.name,
 			Namespace: m.namespace,
 		},
+		Status: provisioning.RepositoryStatus{Webhook: m.webhookStatus},
 	}
 }
 
@@ -188,9 +195,6 @@ func TestFinalizer_process(t *testing.T) {
 			repo: mockRepo{
 				name:      "my-repo",
 				namespace: "default",
-				onDeleteFunc: func(ctx context.Context) error {
-					return nil
-				},
 			},
 			finalizers: []string{
 				repository.ReleaseOrphanResourcesFinalizer,
@@ -244,9 +248,6 @@ func TestFinalizer_process(t *testing.T) {
 			repo: mockRepo{
 				name:      "my-repo",
 				namespace: "default",
-				onDeleteFunc: func(ctx context.Context) error {
-					return nil
-				},
 			},
 			finalizers: []string{
 				repository.RemoveOrphanResourcesFinalizer,
@@ -405,9 +406,6 @@ func TestFinalizer_process(t *testing.T) {
 			repo: mockRepo{
 				name:      "my-repo",
 				namespace: "default",
-				onDeleteFunc: func(ctx context.Context) error {
-					return nil
-				},
 			},
 			finalizers: []string{
 				repository.RemoveOrphanResourcesFinalizer,
@@ -462,9 +460,6 @@ func TestFinalizer_process(t *testing.T) {
 			repo: mockRepo{
 				name:      "my-repo",
 				namespace: "default",
-				onDeleteFunc: func(ctx context.Context) error {
-					return nil
-				},
 			},
 			finalizers: []string{
 				repository.ReleaseOrphanResourcesFinalizer,
@@ -477,17 +472,20 @@ func TestFinalizer_process(t *testing.T) {
 			lister:        nil,
 			clientFactory: nil,
 			repo: mockRepo{
-				name:      "my-repo",
-				namespace: "default",
-				onDeleteFunc: func(ctx context.Context) error {
-					return assert.AnError
-				},
+				name:          "my-repo",
+				namespace:     "default",
+				webhookStatus: &provisioning.WebhookStatus{ID: 1},
+				webhookClient: func() repository.WebhookClient {
+					c := repository.NewMockWebhookClient(t)
+					c.EXPECT().DeleteWebhook(mock.Anything, int64(1)).Return(assert.AnError)
+					return c
+				}(),
 			},
 			finalizers: []string{
 				repository.RemoveOrphanResourcesFinalizer,
 				repository.CleanFinalizer,
 			},
-			expectedErr: "execute deletion hooks: " + assert.AnError.Error(),
+			expectedErr: "execute deletion hooks: delete webhook: " + assert.AnError.Error(),
 		},
 	}
 
