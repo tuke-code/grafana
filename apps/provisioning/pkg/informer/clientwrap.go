@@ -16,11 +16,12 @@ package informer
 import (
 	versioned "github.com/grafana/grafana/apps/provisioning/pkg/generated/clientset/versioned"
 	typedv0alpha1 "github.com/grafana/grafana/apps/provisioning/pkg/generated/clientset/versioned/typed/provisioning/v0alpha1"
+	k8sinformer "github.com/grafana/grafana/pkg/apimachinery/informer"
 )
 
 // WrapClient returns a clientset whose typed Watch calls are served by fn while
 // List and every other call delegate to real. A nil fn returns real unchanged.
-func WrapClient(real versioned.Interface, fn WatchFunc) versioned.Interface {
+func WrapClient(real versioned.Interface, fn k8sinformer.WatchFunc) versioned.Interface {
 	if fn == nil {
 		return real
 	}
@@ -29,7 +30,7 @@ func WrapClient(real versioned.Interface, fn WatchFunc) versioned.Interface {
 
 type clientset struct {
 	versioned.Interface
-	fn WatchFunc
+	fn k8sinformer.WatchFunc
 }
 
 func (c *clientset) ProvisioningV0alpha1() typedv0alpha1.ProvisioningV0alpha1Interface {
@@ -40,5 +41,5 @@ func (c *clientset) ProvisioningV0alpha1() typedv0alpha1.ProvisioningV0alpha1Int
 // own file) returns a typed wrapper that overrides Watch with fn.
 type provisioningV0alpha1 struct {
 	typedv0alpha1.ProvisioningV0alpha1Interface
-	fn WatchFunc
+	fn k8sinformer.WatchFunc
 }

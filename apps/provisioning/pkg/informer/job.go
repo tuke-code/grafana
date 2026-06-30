@@ -4,10 +4,12 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
 	provisioningapis "github.com/grafana/grafana/apps/provisioning/pkg/apis/provisioning/v0alpha1"
 	typedv0alpha1 "github.com/grafana/grafana/apps/provisioning/pkg/generated/clientset/versioned/typed/provisioning/v0alpha1"
+	k8sinformer "github.com/grafana/grafana/pkg/apimachinery/informer"
 )
 
 func (p *provisioningV0alpha1) Jobs(namespace string) typedv0alpha1.JobInterface {
@@ -16,10 +18,13 @@ func (p *provisioningV0alpha1) Jobs(namespace string) typedv0alpha1.JobInterface
 
 type jobs struct {
 	typedv0alpha1.JobInterface
-	fn        WatchFunc
+	fn        k8sinformer.WatchFunc
 	namespace string
 }
 
 func (j *jobs) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return j.fn(ctx, provisioningapis.JobResourceInfo.GroupVersionResource(), j.namespace, opts)
+	get := func(ctx context.Context, name string, o metav1.GetOptions) (runtime.Object, error) {
+		return j.JobInterface.Get(ctx, name, o)
+	}
+	return j.fn(ctx, provisioningapis.JobResourceInfo.GroupVersionResource(), j.namespace, get, opts)
 }

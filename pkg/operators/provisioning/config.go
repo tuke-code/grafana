@@ -16,6 +16,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/clientauth"
 	"github.com/grafana/grafana/pkg/configprovider"
+	"github.com/grafana/grafana/pkg/infra/nats"
 	"github.com/grafana/grafana/pkg/infra/tracing"
 	"github.com/grafana/grafana/pkg/services/apiserver"
 	"github.com/grafana/grafana/pkg/setting"
@@ -52,6 +53,7 @@ type ControllerConfig struct {
 	resyncInterval        time.Duration
 	drainTimeout          time.Duration
 	provisioningClient    *client.Clientset
+	natsSubscriber        nats.Subscriber
 	unified               resources.ResourceStore
 	clients               resources.ClientFactory
 	tokenExchangeClient   *authn.TokenExchangeClient
@@ -108,10 +110,16 @@ func setupFromConfig(cfg *setting.Cfg, registry prometheus.Registerer) (*Control
 		return nil, fmt.Errorf("no configuration available")
 	}
 
+	natsSubscriber, err := newNATSSubscriber(cfg, registry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build nats subscriber: %w", err)
+	}
+
 	operatorSec := cfg.SectionWithEnvOverrides("operator")
 	controllerCfg := &ControllerConfig{
 		registry:       registry,
 		Settings:       cfg,
+		natsSubscriber: natsSubscriber,
 		resyncInterval: operatorSec.Key("resync_interval").MustDuration(60 * time.Second),
 		workerCount:    operatorSec.Key("worker_count").MustInt(1),
 		drainTimeout:   operatorSec.Key("drain_timeout").MustDuration(30 * time.Second),
