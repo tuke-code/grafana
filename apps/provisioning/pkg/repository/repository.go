@@ -189,22 +189,12 @@ type WebhookRepository interface {
 
 	// ProcessRequest normalizes an already-verified request into an event.
 	ProcessRequest(ctx context.Context, req *VerifiedWebhookRequest) (WebhookEvent, error)
-}
 
-// Hooks called after the repository has been created, updated or deleted
-type Hooks interface {
-	Repository
-
-	OnCreate(ctx context.Context) ([]map[string]interface{}, error)
-	OnUpdate(ctx context.Context) ([]map[string]interface{}, error)
-	OnDelete(ctx context.Context) error
-}
-
-// WebhookSecretRotator is implemented by repositories that support periodic
-// webhook secret rotation. The controller calls RotateWebhookSecret when the
-// secret is due for rotation based on the configured interval.
-type WebhookSecretRotator interface {
-	RotateWebhookSecret(ctx context.Context) ([]map[string]any, error)
+	// WebhookClient, WebhookURL and SubscribedEvents expose what the controller
+	// needs to register, reconcile and tear down the provider webhook.
+	WebhookClient() WebhookClient
+	WebhookURL() string
+	SubscribedEvents() []string
 }
 
 // WebhookConfig is the provider-agnostic representation of a git provider webhook.

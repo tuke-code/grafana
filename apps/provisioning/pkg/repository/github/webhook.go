@@ -18,7 +18,6 @@ var subscribedEvents = []string{"pull_request", "push"} // same order as slices.
 
 type GithubWebhookRepository interface {
 	GithubRepository
-	repository.Hooks
 	repository.WebhookRepository
 }
 
@@ -26,11 +25,11 @@ var _ repository.WebhookRepository = (*githubWebhookRepository)(nil)
 
 type githubWebhookRepository struct {
 	GithubRepository
-	*repository.WebhookManager
-	config *provisioning.Repository
-	owner  string
-	repo   string
-	secret common.RawSecureValue
+	config     *provisioning.Repository
+	owner      string
+	repo       string
+	secret     common.RawSecureValue
+	webhookURL string
 }
 
 func NewGithubWebhookRepository(
@@ -38,21 +37,30 @@ func NewGithubWebhookRepository(
 	webhookURL string,
 	secret common.RawSecureValue,
 ) GithubWebhookRepository {
-	cfg := basic.Config()
-	r := &githubWebhookRepository{
+	return &githubWebhookRepository{
 		GithubRepository: basic,
-		config:           cfg,
+		config:           basic.Config(),
 		owner:            basic.Owner(),
 		repo:             basic.Repo(),
 		secret:           secret,
+		webhookURL:       webhookURL,
 	}
-	r.WebhookManager = repository.NewWebhookManager(basic.Client(), cfg.Status.Webhook, webhookURL, subscribedEvents,
-		cfg.Spec.Webhook != nil && cfg.Spec.Webhook.Disabled, cfg.Spec.Workflows)
-	return r
 }
 
 func (r *githubWebhookRepository) Slug() string {
 	return fmt.Sprintf("%s/%s", r.owner, r.repo)
+}
+
+func (r *githubWebhookRepository) WebhookClient() repository.WebhookClient {
+	return r.Client()
+}
+
+func (r *githubWebhookRepository) WebhookURL() string {
+	return r.webhookURL
+}
+
+func (r *githubWebhookRepository) SubscribedEvents() []string {
+	return subscribedEvents
 }
 
 func (r *githubWebhookRepository) VerifyRequest(req *http.Request) (*repository.VerifiedWebhookRequest, error) {
